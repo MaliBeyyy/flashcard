@@ -97,4 +97,9 @@ app.delete('/api/kelime-sil', async (req, res) => {
   }
 });
 
+app.get('/api/test', (req, res) => {
+  console.log("TEST ENDPOINT ÇAĞRILDI");
+  res.status(200).json({ message: 'Backend test endpoint çalışıyor!' });
+});
+
 module.exports = app; 
