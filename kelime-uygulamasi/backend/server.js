@@ -40,6 +40,7 @@ app.post('/api/register', async (req, res) => {
     await user.save();
     res.status(201).json({ message: 'Kullanıcı başarıyla oluşturuldu' });
   } catch (error) {
+    console.error("[REGISTER ERROR]:", error);
     res.status(500).json({ message: 'Sunucu hatası' });
   }
 });
@@ -55,6 +56,7 @@ app.post('/api/login', async (req, res) => {
 
     res.json({ username: user.username, kelimeler: user.kelimeler });
   } catch (error) {
+    console.error("[LOGIN ERROR]:", error);
     res.status(500).json({ message: 'Sunucu hatası' });
   }
 });
@@ -72,6 +74,7 @@ app.post('/api/kelime-ekle', async (req, res) => {
     await user.save();
     res.json({ kelimeler: user.kelimeler });
   } catch (error) {
+    console.error("[KELIME EKLE ERROR]:", error);
     res.status(500).json({ message: 'Sunucu hatası' });
   }
 });
@@ -89,11 +92,9 @@ app.delete('/api/kelime-sil', async (req, res) => {
     await user.save();
     res.json({ kelimeler: user.kelimeler });
   } catch (error) {
+    console.error("[KELIME SIL ERROR]:", error);
     res.status(500).json({ message: 'Sunucu hatası' });
   }
 });
 
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`Server ${PORT} portunda çalışıyor`);
-}); 
+module.exports = app; 
