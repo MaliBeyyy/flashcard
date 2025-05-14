@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import './App.css';
+
+const API_URL = 'http://localhost:5000/api';
 
 function App() {
   const [kelimeler, setKelimeler] = useState([]);
@@ -8,14 +10,70 @@ function App() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showAnlam, setShowAnlam] = useState(false);
   const [showList, setShowList] = useState(false);
+  const [username, setUsername] = useState('');
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    // Sayfa yüklendiğinde localStorage'dan kullanıcı bilgilerini kontrol et
+    const savedUsername = localStorage.getItem('username');
+    if (savedUsername) {
+      handleLogin(savedUsername);
+    }
+  }, []);
+
+  const handleLogin = async (username) => {
+    try {
+      const response = await axios.post(`${API_URL}/login`, { username });
+      setUsername(response.data.username);
+      setKelimeler(response.data.kelimeler);
+      setIsLoggedIn(true);
+      localStorage.setItem('username', response.data.username);
+      setError('');
+    } catch (error) {
+      if (error.response?.status === 404) {
+        // Kullanıcı bulunamadıysa kayıt ol
+        try {
+          await axios.post(`${API_URL}/register`, { username });
+          setUsername(username);
+          setKelimeler([]);
+          setIsLoggedIn(true);
+          localStorage.setItem('username', username);
+          setError('');
+        } catch (registerError) {
+          setError('Kayıt işlemi başarısız oldu');
+        }
+      } else {
+        setError('Giriş yapılamadı');
+      }
+    }
+  };
+
+  const handleLogout = () => {
+    setIsLoggedIn(false);
+    setUsername('');
+    setKelimeler([]);
+    localStorage.removeItem('username');
+  };
 
   const kelimeEkle = async () => {
     if (yeniKelime) {
-      const translatedAnlam = await ceviriYap(yeniKelime);
-      setKelimeler([...kelimeler, { kelime: yeniKelime, anlam: translatedAnlam }]);
-      setCurrentIndex(kelimeler.length);
-      setShowAnlam(true);
-      setYeniKelime('');
+      try {
+        const translatedAnlam = await ceviriYap(yeniKelime);
+        const response = await axios.post(`${API_URL}/kelime-ekle`, {
+          username,
+          kelime: yeniKelime,
+          anlam: translatedAnlam
+        });
+        
+        setKelimeler(response.data.kelimeler);
+        setCurrentIndex(response.data.kelimeler.length - 1);
+        setShowAnlam(true);
+        setYeniKelime('');
+        setError('');
+      } catch (error) {
+        setError('Kelime eklenirken bir hata oluştu');
+      }
     }
   };
 
@@ -48,18 +106,54 @@ function App() {
     setShowList(!showList);
   };
 
-  const kelimeSil = (index) => {
-    const yeniKelimeler = kelimeler.filter((_, i) => i !== index);
-    setKelimeler(yeniKelimeler);
-    if (currentIndex >= yeniKelimeler.length) {
-      setCurrentIndex(0);
+  const kelimeSil = async (index) => {
+    try {
+      const response = await axios.delete(`${API_URL}/kelime-sil`, {
+        data: { username, kelimeIndex: index }
+      });
+      
+      setKelimeler(response.data.kelimeler);
+      if (currentIndex >= response.data.kelimeler.length) {
+        setCurrentIndex(0);
+      }
+      setError('');
+    } catch (error) {
+      setError('Kelime silinirken bir hata oluştu');
     }
   };
+
+  if (!isLoggedIn) {
+    return (
+      <div className="App">
+        <header className="App-header">
+          <h1>Kelime Uygulaması</h1>
+          <form onSubmit={(e) => {
+            e.preventDefault();
+            handleLogin(username);
+          }}>
+            <input
+              type="text"
+              placeholder="Kullanıcı Adı"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+            />
+            <button type="submit">Giriş Yap</button>
+          </form>
+          {error && <p className="error">{error}</p>}
+        </header>
+      </div>
+    );
+  }
 
   return (
     <div className="App">
       <header className="App-header">
         <h1>Kelime Uygulaması</h1>
+        <div className="user-info">
+          <span>Hoş geldin, {username}!</span>
+          <button onClick={handleLogout}>Çıkış Yap</button>
+        </div>
+        {error && <p className="error">{error}</p>}
         <input
           type="text"
           placeholder="Kelime"
